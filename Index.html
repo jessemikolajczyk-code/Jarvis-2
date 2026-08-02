@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>JARVIS</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%23050a0f'/><circle cx='50' cy='50' r='30' fill='none' stroke='%2300d4ff' stroke-width='4'/><circle cx='50' cy='50' r='10' fill='%2300d4ff'/></svg>">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<script src="https://js.puter.com/v2/"></script>
+<style>
+  :root{
+    --bg: #050a0f;
+    --panel: #0a141c;
+    --accent: #00d4ff;
+    --accent-dim: #0a5f75;
+    --accent-glow-a: #7fe9ff;
+    --accent-glow-b: #005066;
+    --amber: #ff9d3d;
+    --text: #d7f3ff;
+    --text-dim: #5a8a9a;
+  }
+  body.friday{
+    --accent: #ff3b8d;
+    --accent-dim: #7a1245;
+    --accent-glow-a: #ffb3d6;
+    --accent-glow-b: #5c0030;
+    --text: #ffe1ee;
+    --text-dim: #a4587a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{
+    height:100%; margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system, "SF Mono", Menlo, monospace;
+    overflow:hidden;
+    transition: color .3s ease;
+  }
+  body{
+    display:flex; flex-direction:column; align-items:center; justify-content:space-between;
+    padding: env(safe-area-inset-top,20px) 20px env(safe-area-inset-bottom,20px);
+    background:
+      radial-gradient(circle at 50% 30%, rgba(0,212,255,0.08), transparent 60%),
+      var(--bg);
+  }
+
+  .header{width:100%; display:flex; flex-direction:column; align-items:center; padding-top:10px; gap:12px;}
+  .brand{letter-spacing:6px; font-size:13px; color:var(--accent); font-weight:600; transition:color .3s ease;}
+
+  .toggle{
+    display:flex; border:1px solid var(--accent-dim); border-radius:20px; overflow:hidden;
+    background:rgba(255,255,255,0.03);
+  }
+  .toggle button{
+    border:none; background:transparent; color:var(--text-dim); font-family:inherit;
+    font-size:11px; letter-spacing:2px; padding:8px 18px; -webkit-user-select:none; user-select:none;
+  }
+  .toggle button.on{background:var(--accent); color:#02121a; font-weight:700;}
+
+  .core-wrap{
+    position:relative; width:min(72vw,320px); height:min(72vw,320px);
+    display:flex; align-items:center; justify-content:center;
+    margin-top:5vh;
+  }
+  .ring{
+    position:absolute; border-radius:50%; border:1px solid var(--accent-dim);
+    opacity:0.5; transition: border-color .3s ease;
+  }
+  .ring1{inset:0;}
+  .ring2{inset:14%; border-style:dashed;}
+  .ring3{inset:28%;}
+  .core{
+    width:34%; height:34%; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, var(--accent-glow-a), var(--accent) 40%, var(--accent-glow-b) 100%);
+    box-shadow: 0 0 30px 6px color-mix(in srgb, var(--accent) 55%, transparent), inset 0 0 20px rgba(255,255,255,0.4);
+    transition: transform .15s ease, box-shadow .3s ease, background .3s ease;
+  }
+  .core-wrap.listening .core{ animation: pulse 1.1s ease-in-out infinite; }
+  .core-wrap.thinking .ring1{animation: spin 2.2s linear infinite;}
+  .core-wrap.thinking .ring3{animation: spin 3.4s linear infinite reverse;}
+  .core-wrap.speaking .core{
+    background: radial-gradient(circle at 35% 30%, #ffe0b0, var(--amber) 40%, #6b3900 100%);
+    box-shadow: 0 0 30px 6px rgba(255,157,61,0.55), inset 0 0 20px rgba(255,255,255,0.4);
+  }
+  @keyframes pulse{ 0%,100%{transform:scale(1);} 50%{transform:scale(1.18);} }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .status{
+    margin-top:5vh; min-height:1.4em; font-size:14px; letter-spacing:2px;
+    color:var(--text-dim); text-transform:uppercase; transition:color .3s ease;
+  }
+
+  .transcript{
+    width:100%; max-width:480px; flex:1; overflow-y:auto; margin-top:18px;
+    padding:0 4px; -webkit-overflow-scrolling:touch;
+  }
+  .line{margin:10px 0; font-size:15px; line-height:1.4;}
+  .line .who{font-size:11px; letter-spacing:2px; display:block; margin-bottom:2px;}
+  .line.user .who{color:var(--amber);}
+  .line.ai .who{color:var(--accent);}
+  .line.user{color:#e8e8e8;}
+  .line.ai{color:var(--text);}
+
+  .controls{
+    width:100%; max-width:480px; display:flex; align-items:center; justify-content:center;
+    gap:16px; padding-bottom:10px;
+  }
+  .mic-btn{
+    width:78px; height:78px; border-radius:50%; border:2px solid var(--accent);
+    background: rgba(255,255,255,0.06); color:var(--accent); font-size:30px;
+    display:flex; align-items:center; justify-content:center;
+    -webkit-user-select:none; user-select:none; transition: border-color .3s ease, color .3s ease;
+  }
+  .mic-btn.active{ background: rgba(255,60,60,0.15); border-color:#ff4d4d; color:#ff4d4d; }
+  .hint{font-size:11px; color:var(--text-dim); letter-spacing:1px; text-align:center; transition:color .3s ease;}
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="brand" id="brand">J.A.R.V.I.S.</div>
+    <div class="toggle">
+      <button id="btnJarvis" class="on">JARVIS</button>
+      <button id="btnFriday">FRIDAY</button>
+    </div>
+  </div>
+
+  <div class="core-wrap" id="coreWrap">
+    <div class="ring ring1"></div>
+    <div class="ring ring2"></div>
+    <div class="ring ring3"></div>
+    <div class="core"></div>
+  </div>
+
+  <div class="status" id="status">Tap the mic to begin</div>
+
+  <div class="transcript" id="transcript"></div>
+
+  <div class="controls">
+    <button class="mic-btn" id="micBtn">ð¤</button>
+  </div>
+  <div class="hint" id="hint">Say a greeting, or just tap and talk</div>
+
+<script>
+const coreWrap   = document.getElementById('coreWrap');
+const statusEl   = document.getElementById('status');
+const transcript = document.getElementById('transcript');
+const micBtn     = document.getElementById('micBtn');
+const brandEl    = document.getElementById('brand');
+const hintEl     = document.getElementById('hint');
+const btnJarvis  = document.getElementById('btnJarvis');
+const btnFriday  = document.getElementById('btnFriday');
+
+const PERSONAS = {
+  jarvis: {
+    label: 'J.A.R.V.I.S.',
+    system: "You are JARVIS, a witty, calm, extremely capable British AI assistant, inspired by the AI from Iron Man. Keep answers short and conversational (1-3 sentences) since they will be spoken out loud. Be helpful, a little dry-witted, and address the user respectfully.",
+    voiceMatch: /Daniel|Arthur|British|UK/i
+  },
+  friday: {
+    label: 'F.R.I.D.A.Y.',
+    system: "You are FRIDAY, an upbeat, warm, quick-witted AI assistant with a light Irish charm, inspired by the AI from Iron Man. Keep answers short and conversational (1-3 sentences) since they will be spoken out loud. Be encouraging, a bit more casual and playful than a typical assistant, and address the user warmly.",
+    voiceMatch: /Moira|Irish|Samantha|Female/i
+  }
+};
+
+let personaKey = 'jarvis';
+let history = [{ role: "user", content: PERSONAS.jarvis.system }];
+
+function setPersona(key){
+  personaKey = key;
+  const p = PERSONAS[key];
+  history = [{ role: "user", content: p.system }];
+  brandEl.textContent = p.label;
+  document.body.classList.toggle('friday', key === 'friday');
+  btnJarvis.classList.toggle('on', key === 'jarvis');
+  btnFriday.classList.toggle('on', key === 'friday');
+  statusEl.textContent = 'Tap the mic to begin';
+  hintEl.textContent = 'Say a greeting, or just tap and talk';
+  transcript.innerHTML = '';
+}
+
+btnJarvis.addEventListener('click', () => setPersona('jarvis'));
+btnFriday.addEventListener('click', () => setPersona('friday'));
+
+function setState(state){
+  coreWrap.classList.remove('listening','thinking','speaking');
+  if(state) coreWrap.classList.add(state);
+}
+
+function addLine(who, text){
+  const div = document.createElement('div');
+  div.className = 'line ' + (who === 'You' ? 'user' : 'ai');
+  div.innerHTML = '<span class="who">' + who + '</span>' + text;
+  transcript.appendChild(div);
+  transcript.scrollTop = transcript.scrollHeight;
+}
+
+function speak(text){
+  return new Promise((resolve) => {
+    setState('speaking');
+    statusEl.textContent = 'Speaking';
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate = 1.02;
+    utter.pitch = personaKey === 'friday' ? 1.05 : 0.85;
+    const voices = speechSynthesis.getVoices();
+    const preferred = voices.find(v => PERSONAS[personaKey].voiceMatch.test(v.name));
+    if(preferred) utter.voice = preferred;
+    utter.onend = resolve;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utter);
+  });
+}
+
+async function askAI(userText){
+  addLine('You', userText);
+  history.push({ role: "user", content: userText });
+  setState('thinking');
+  statusEl.textContent = 'Thinking';
+  try{
+    const response = await puter.ai.chat(history, { model: "claude-sonnet-4-6" });
+    const reply = (response && response.message && response.message.content)
+      ? (Array.isArray(response.message.content) ? response.message.content.map(c=>c.text||'').join(' ') : response.message.content)
+      : String(response);
+    history.push({ role: "assistant", content: reply });
+    addLine(PERSONAS[personaKey].label, reply);
+    await speak(reply);
+  }catch(err){
+    const msg = "Apologies, I hit a snag reaching my brain. Mind trying again?";
+    addLine(PERSONAS[personaKey].label, msg);
+    await speak(msg);
+    console.error(err);
+  }
+  setState(null);
+  statusEl.textContent = 'Tap the mic to begin';
+}
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let listening = false;
+
+if(SpeechRecognition){
+  recognition = new SpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.continuous = false;
+
+  recognition.onstart = () => {
+    listening = true;
+    micBtn.classList.add('active');
+    setState('listening');
+    statusEl.textContent = 'Listening...';
+  };
+  recognition.onerror = (e) => {
+    console.error('Speech recognition error', e);
+    statusEl.textContent = "Didn't catch that â tap to try again";
+  };
+  recognition.onend = () => {
+    listening = false;
+    micBtn.classList.remove('active');
+    if(coreWrap.classList.contains('listening')) setState(null);
+  };
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    if(text && text.trim().length){ askAI(text.trim()); }
+  };
+}else{
+  statusEl.textContent = 'Voice input not supported â use Safari';
+}
+
+micBtn.addEventListener('click', () => {
+  if(!recognition){ return; }
+  if(listening){ recognition.stop(); }
+  else{
+    speechSynthesis.cancel();
+    try{ recognition.start(); }catch(e){ /* already started */ }
+  }
+});
+
+speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+</script>
+</body>
